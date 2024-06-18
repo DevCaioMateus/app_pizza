@@ -57,7 +57,7 @@ export function ModalOrder({isOpen, onRequestClose, order, handleFinishOrder}: M
 
       <button 
         className={styles.buttonOrder} 
-        onClick={ () => handleFinishOrder(order[0].id) }
+        onClick={ () => handleFinishOrder(order[0].order.id) }
         >
         Concluir pedido
       </button>

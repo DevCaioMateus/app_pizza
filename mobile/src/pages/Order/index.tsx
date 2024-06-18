@@ -5,15 +5,20 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   TextInput,
-  Modal
+  Modal,
+  FlatList
 } from 'react-native'
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+
+import { StackParamsList } from '../../routes/app.routes'
 
 import { Feather } from '@expo/vector-icons'
 
 import { api } from '../../services/api'
 
 import { ModalPicker } from '../../components/ModalPicker'
+import { ListItem } from '../../components/ListItem'
 
 type RouteDetailParams = {
   Order: {
@@ -32,11 +37,18 @@ type ProductProps = {
   name: string
 }
 
+type ItemProps = {
+  id: string
+  productId: string
+  name: string
+  amount: string | number
+}
+
 type OrderRouteProps = RouteProp<RouteDetailParams, 'Order'>
 
 export default function Order(){
   const route = useRoute<OrderRouteProps>()
-  const navigation = useNavigation()
+  const navigation = useNavigation<NativeStackNavigationProp<StackParamsList>>()
 
   const [category, setCategory] = useState<CategoryProps[] | []>([])
   const [categorySelected, setCategorySelected] = useState<CategoryProps | undefined>()
@@ -46,6 +58,7 @@ export default function Order(){
   const [modalProductVisible, setModalProductVisible] = useState(false)
 
   const [amount, setAmout] = useState('1')
+  const [items, setItems] = useState<ItemProps[] | []>([])
 
   useEffect(() => {
     async function loadInfo() {
@@ -58,7 +71,7 @@ export default function Order(){
     loadInfo()
   }, [])
 
-  // ROda apenas quando selecionar uma categoria
+  // Roda apenas quando selecionar uma categoria
   useEffect(() => {
     async function loadProducts(){
       const response = await api.get('/category/product', {
@@ -100,6 +113,44 @@ export default function Order(){
     setProductSelected(item)
   }
 
+  // adicionar um produto na mesa
+  async function handleAddItem(){
+    const response = await api.post('/order/add', {
+      orderId: route.params.orderId,
+      productId: productSelected?.id,
+      amount: Number(amount)
+    })
+
+    let data = {
+      id: response.data.id,
+      productId: productSelected?.id as string,
+      name: productSelected?.name as string,
+      amount: amount
+    }
+
+    setItems(oldArray => [...oldArray, data])
+
+  }
+
+  async function handleDeleteItem(itemId: string){
+    await api.delete('/order/remove', {
+      params: {
+        itemId: itemId
+      }
+    })
+
+    // remover da lista de itens
+    let updatedItemList = items.filter( item => {
+      return (item.id !== itemId)
+    })
+
+    setItems(updatedItemList)
+  }
+
+  function handleFinishOrder(){
+    navigation.navigate('FinishOrder', { number: route.params?.number, orderId: route.params?.orderId })
+  }
+
   return(
     <View
       style={styles.container}
@@ -108,15 +159,17 @@ export default function Order(){
         <Text style={styles.title}>
           Mesa {route.params.number}
         </Text>
-        <TouchableOpacity
-          onPress={handleCloseOrder}
-        >
-          <Feather 
-            name='trash-2' 
-            size={28}
-            color='#ff3f4b'
-          />
-        </TouchableOpacity>
+        { items.length === 0 && (
+         <TouchableOpacity
+            onPress={handleCloseOrder}
+          >
+            <Feather 
+              name='trash-2' 
+              size={28}
+              color='#ff3f4b'
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {category.length !== 0 && (
@@ -159,6 +212,7 @@ export default function Order(){
       >
         <TouchableOpacity
           style={styles.buttonAdd}
+          onPress={handleAddItem}
         >
           <Text
             style={styles.buttonText}
@@ -168,7 +222,9 @@ export default function Order(){
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, { opacity: items.length === 0 ? 0.3 : 1 }]}
+          disabled={items.length === 0}
+          onPress={handleFinishOrder}
         >
           <Text
             style={styles.buttonText}
@@ -177,6 +233,14 @@ export default function Order(){
           </Text>
         </TouchableOpacity>
       </View>
+
+      <FlatList
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1, marginTop: 24 }}
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <ListItem data={item} deleteItem={handleDeleteItem}/>}
+      />
       
       <Modal
         transparent={true}

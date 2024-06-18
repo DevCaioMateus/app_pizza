@@ -57,18 +57,20 @@ export default function Dashboard({ orders }: HomeProps){
   }
 
   async function handleOpenModalView(id: string){
-    const apitClient = setupAPIClient()
+    const apiClient = setupAPIClient()
 
-    const response = await apitClient.get('/order/detail', {
+    const response = await apiClient.get('/order/detail', {
       params: {
         orderId: id
       }
     })
+    console.log('response', response.data)
     setModalItem(response.data)
     setModalVisible(true)
   }
 
-  async function handleFinishItem(id: string){
+  async function handleFinishOrder(id: string){
+    console.log('id', id)
     const apiClient = setupAPIClient()
     await apiClient.put('/order/finish', {
       orderId: id
@@ -140,7 +142,7 @@ export default function Dashboard({ orders }: HomeProps){
           isOpen={modalVisible}
           onRequestClose={handleCloseModal}
           order={modalItem}
-          handleFinishOrder={ handleFinishItem }
+          handleFinishOrder={ handleFinishOrder }
         />
       ) }
     </div>
